@@ -5,9 +5,13 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.*;
 import java.io.*;
+import java.net.URL;
+import java.net.URLConnection;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
+
+import static by.mitchamador.Main.channelsOnly;
 
 public class XMLTV {
 
@@ -399,13 +403,20 @@ public class XMLTV {
     }
 
     public void parseStax(String filename) throws IOException {
-        BufferedInputStream fin = new BufferedInputStream(new FileInputStream(filename));
-        GZIPInputStream gzip = null;
-        if (filename.endsWith(".gz")) {
-            gzip = new GZIPInputStream(fin);
+        InputStream in;
+        URLConnection con = null;
+        if (filename.startsWith("http://") || filename.startsWith("https://")) {
+            URL url = new URL(filename);
+            con = url.openConnection();
+            in = new BufferedInputStream(con.getInputStream());
+        } else {
+            in = new BufferedInputStream(new FileInputStream(filename));
         }
 
-        InputStream in = gzip != null ? gzip : fin;
+        if (filename.endsWith(".gz")) {
+            in = new GZIPInputStream(con == null ? in : con.getInputStream());
+        }
+
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 
         Calendar c = Calendar.getInstance();
@@ -426,7 +437,7 @@ public class XMLTV {
                     String name = start.getName().getLocalPart();
                     if (name.equals("channel")) {
                         channels.add(new Channel(xmlEventReader, start));
-                    } else if (name.equals("programme")) {
+                    } else if (!channelsOnly && name.equals("programme")) {
                         try {
                             Programme p = new Programme(xmlEventReader, start);
                             if (p.start != null && p.stop != null

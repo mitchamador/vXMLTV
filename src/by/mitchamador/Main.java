@@ -24,6 +24,7 @@ public class Main {
     static boolean quiet;
     static boolean debug;
     static int threads = 1;
+    static boolean channelsOnly;
 
     static void parseArgs(String[] args) {
         ArrayList<String> m3uList = new ArrayList<String>();
@@ -57,6 +58,8 @@ public class Main {
                     }
                 } else if ("-q".equals(arg)) {
                     quiet = true;
+                } else if ("-c".equals(arg)) {
+                    channelsOnly = true;
                 } else if ("-d".equals(arg)) {
                     debug = true;
                 }

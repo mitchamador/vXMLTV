@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -78,8 +80,15 @@ public class M3UParser {
 			return;
 		}
 		try {
+			URLConnection con = null;
+			if (filename.startsWith("http://") || filename.startsWith("https://")) {
+				URL url = new URL(filename);
+				con = url.openConnection();
+			}
+
 			BufferedReader br = new BufferedReader(new InputStreamReader(
-					new FileInputStream(filename), "UTF-8"));
+					con == null ? new FileInputStream(filename) : con.getInputStream(), "UTF-8"));
+
 			String tmp = null;
 			while ((tmp = shrink(br.readLine())) != null) {
 				if (tmp.startsWith(PREFIX_EXTM3U)) {
