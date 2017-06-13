@@ -382,6 +382,7 @@ public class XMLTV {
     }
 
     static String escapeXml(String st){
+        if (st == null) return "";
         //st = st.replaceAll("[^\\u0020-\\uD7FF\\uE000-\\uFFFD\\t\\n\\r]", " ");
         st = st.replaceAll("&", "&amp;");
         //st = st.replaceAll("'", "&apos;");
