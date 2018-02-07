@@ -15,6 +15,7 @@ import static by.mitchamador.Main.channelsOnly;
 
 public class XMLTV {
 
+    public String filename;
     //@SerializedName("channel")
     public List<Channel> channels = new ArrayList<Channel>();
     //@SerializedName("programme")
@@ -404,6 +405,9 @@ public class XMLTV {
     }
 
     public void parseStax(String filename) throws IOException {
+
+        this.filename = filename;
+
         InputStream in;
         URLConnection con = null;
         if (filename.startsWith("http://") || filename.startsWith("https://")) {

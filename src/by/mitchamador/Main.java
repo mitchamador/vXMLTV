@@ -80,8 +80,6 @@ public class Main {
 
         parseArgs(args);
 
-        XMLTV epg = new XMLTV();
-
         ExecutorService pool = Executors.newFixedThreadPool(threads <= 0 ? Runtime.getRuntime().availableProcessors() : threads);
 
         t1 = new Date().getTime();
@@ -95,6 +93,8 @@ public class Main {
                     XMLTV epg = new XMLTV();
 
                     try {
+                        epg.filename = file;
+
                         Long t1 = new Date().getTime();
                         epg.parseStax(file);
                         Long t2 = new Date().getTime();
@@ -111,11 +111,11 @@ public class Main {
         }
         pool.shutdown();
 
+        ArrayList<XMLTV> list = new ArrayList<XMLTV>();
+
         for (Future<XMLTV> future : futures) {
             try {
-                XMLTV x = future.get();
-                epg.channels.addAll(x.channels);
-                epg.programmes.addAll(x.programmes);
+                list.add(future.get());
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
@@ -129,6 +129,19 @@ public class Main {
 
         if (debug) {
             System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000);
+        }
+
+        XMLTV epg = new XMLTV();
+
+        for (XMLTV x : list) {
+            epg.channels.addAll(x.channels);
+            epg.programmes.addAll(x.programmes);
+            if (!quiet && channelsOnly) {
+                System.out.println("=== " + x.filename);
+                for (Channel ch : x.channels) {
+                    System.out.println(ch.getName());
+                }
+            }
         }
 
         Collections.sort(epg.channels, new Comparator<Channel>() {
