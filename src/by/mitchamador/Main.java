@@ -128,7 +128,18 @@ public class Main {
         t2 = new Date().getTime();
 
         if (debug) {
-            System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000);
+            System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000 + "\n");
+            for (XMLTV x : list) {
+                ArrayList<String> sList = new ArrayList<String>();
+                for (Channel c : x.channels) {
+                    sList.add(c.getName());
+                }
+                Collections.sort(sList);
+                System.out.println("channel list of file: " + x.filename);
+                for (String s : sList) {
+                    System.out.println(s);
+                }
+            }
         }
 
         XMLTV epg = new XMLTV();
@@ -159,6 +170,18 @@ public class Main {
 
         for (String file : filelistM3U) {
             M3UFile m3u = M3UToolSet.load(file);
+
+            if (debug) {
+                ArrayList<String> sList = new ArrayList<String>();
+                for (M3UItem item : m3u.getItems()) {
+                    sList.add(item.getTvgName() != null ? item.getTvgName().replaceAll("_", " ") : item.getChannelName());
+                }
+                //Collections.sort(sList);
+                System.out.println("channel list of m3u file: " + file);
+                for (String s : sList) {
+                    System.out.println(s);
+                }
+            }
 
             M3UHead head = m3u.getHeader();
 
@@ -202,14 +225,18 @@ public class Main {
 
         if (!quiet && !aliases.isEmpty()) {
             System.out.println("=== aliases ===");
-            for (String s : aliases) {
+            ArrayList<String> sList = new ArrayList<String>(aliases);
+            Collections.sort(sList);
+            for (String s : sList) {
                 System.out.println(s);
             }
         }
 
         if (!quiet && !missed.isEmpty()) {
             System.out.println("=== missed channels ===");
-            for (String s : missed) {
+            ArrayList<String> sList = new ArrayList<String>(missed);
+            Collections.sort(sList);
+            for (String s : sList) {
                 System.out.println(s);
             }
         }
