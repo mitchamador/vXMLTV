@@ -11,8 +11,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-import static by.mitchamador.Main.channelsOnly;
-
 public class XMLTV {
 
     public String filename;
@@ -20,6 +18,12 @@ public class XMLTV {
     public List<Channel> channels = new ArrayList<Channel>();
     //@SerializedName("programme")
     public List<Programme> programmes = new ArrayList<Programme>();
+
+    public void setChannelsOnly(boolean channelsOnly) {
+        this.channelsOnly = channelsOnly;
+    }
+
+    private boolean channelsOnly;
 
     public class Programme {
         //@SerializedName("@channel")

@@ -209,7 +209,7 @@ public class M3UParser {
 				if (Character.isWhitespace(c)) {
 					// Do nothing
 				} else if (c == ',') {
-					putAttr(attr, ATTR_CHANNEL_NAME, tmp.substring(i));
+					putAttr(attr, ATTR_CHANNEL_NAME, tmp.substring(i).trim());
 					i = tmp.length();
 				} else {
 					connector.append(c);
@@ -249,10 +249,13 @@ public class M3UParser {
 					status = Status.READY;
 					break;
 				}
-				if (Character.isWhitespace(c)) {
+				if (Character.isWhitespace(c) || c == ',') {
 					if (connector.length() > 0) {
 						putAttr(attr, key, connector.toString());
 						reset(connector);
+					}
+					if (c == ',') {
+						i--;
 					}
 					key = EMPTY_STRING;
 					status = Status.READY;

@@ -1,5 +1,7 @@
 package by.mitchamador;
 
+import by.mitchamador.XMLTV.Channel;
+import by.mitchamador.XMLTV.Programme;
 import com.iptv.parser.M3UFile;
 import com.iptv.parser.M3UHead;
 import com.iptv.parser.M3UItem;
@@ -11,79 +13,49 @@ import java.util.concurrent.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import by.mitchamador.XMLTV.Channel;
-import by.mitchamador.XMLTV.Programme;
-import by.mitchamador.XMLTV.DisplayName;
+public class vXMLTV {
 
-public class Main {
+    private String[] filelistM3U;
+    private String[] filelistXmlTv;
 
-    static String[] filelistM3U;
-    static String[] filelistXmlTv;
+    private String out;
+    private boolean quiet;
+    private boolean debug;
+    private int threads = 1;
+    private boolean channelsOnly;
 
-    static String out;
-    static boolean quiet;
-    static boolean debug;
-    static int threads = 1;
-    static boolean channelsOnly;
-
-    static void parseArgs(String[] args) {
-        ArrayList<String> m3uList = new ArrayList<String>();
-        ArrayList<String> xmlTvList = new ArrayList<String>();
-        if (args != null) {
-            int c = 0;
-            while (c < args.length) {
-                String arg = args[c].toLowerCase();
-                if ("-u".equals(arg)) {
-                    c++;
-                    if (c < args.length) {
-                        m3uList.add(args[c]);
-                    }
-                } else if ("-x".equals(arg)) {
-                    c++;
-                    if (c < args.length) {
-                        xmlTvList.add(args[c]);
-                    }
-                } else if ("-j".equals(arg)) {
-                    c++;
-                    if (c < args.length) {
-                        try {
-                            threads = Integer.parseInt(args[c]);
-                        } catch (NumberFormatException e) {
-                        }
-                    }
-                } else if ("-o".equals(arg)) {
-                    c++;
-                    if (c < args.length) {
-                        out = args[c];
-                    }
-                } else if ("-q".equals(arg)) {
-                    quiet = true;
-                } else if ("-c".equals(arg)) {
-                    channelsOnly = true;
-                } else if ("-d".equals(arg)) {
-                    debug = true;
-                }
-                c++;
-            }
-        }
-        filelistM3U = m3uList.toArray(new String[m3uList.size()]);
-        filelistXmlTv = xmlTvList.toArray(new String[xmlTvList.size()]);
+    public vXMLTV(String[] args) {
+        parseArgs(args);
     }
 
-
-    static String getConvertedName(String s) {
-        return s.toLowerCase().replaceAll("[ _\\-\\(\\)]", "");
-    }
-
-    public static void main(String[] args) {
+    private void run() {
         long t1, t2;
 
-        parseArgs(args);
+        t1 = System.currentTimeMillis();
+
+        XMLTV epg = new XMLTV();
+        epg.setChannelsOnly(channelsOnly);
+
+
+        List<M3UFile> listM3U = new ArrayList<M3UFile>();
+        for (String file : filelistM3U) {
+            M3UFile m3u = M3UToolSet.load(file);
+            listM3U.add(m3u);
+
+            if (debug) {
+                ArrayList<String> sList = new ArrayList<String>();
+                for (M3UItem item : m3u.getItems()) {
+                    sList.add(item.getTvgName() != null ? item.getTvgName().replaceAll("_", " ") : item.getChannelName());
+                }
+                //Collections.sort(sList);
+                System.out.println("channel list of m3u file: " + file);
+                for (String s : sList) {
+                    System.out.println(s);
+                }
+            }
+        }
 
         ExecutorService pool = Executors.newFixedThreadPool(threads <= 0 ? Runtime.getRuntime().availableProcessors() : threads);
-
-        t1 = new Date().getTime();
-
         ArrayList<Future<XMLTV>> futures = new ArrayList<Future<XMLTV>>();
 
         for (final String file : filelistXmlTv) {
@@ -91,13 +63,14 @@ public class Main {
                 @Override
                 public XMLTV call() throws Exception {
                     XMLTV epg = new XMLTV();
+                    epg.setChannelsOnly(channelsOnly);
 
                     try {
                         epg.filename = file;
 
-                        Long t1 = new Date().getTime();
+                        Long t1 = System.currentTimeMillis();
                         epg.parseStax(file);
-                        Long t2 = new Date().getTime();
+                        Long t2 = System.currentTimeMillis();
 
                         if (debug) {
                             System.out.println(file + " " + (double) (t2 - t1) / (double) 1000 + " sec, total channels: " + epg.channels.size() + ", total programmes: " + epg.programmes.size());
@@ -125,7 +98,7 @@ public class Main {
             }
         }
 
-        t2 = new Date().getTime();
+        t2 = System.currentTimeMillis();
 
         if (debug) {
             System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000 + "\n");
@@ -141,8 +114,6 @@ public class Main {
                 }
             }
         }
-
-        XMLTV epg = new XMLTV();
 
         for (XMLTV x : list) {
             epg.channels.addAll(x.channels);
@@ -162,27 +133,14 @@ public class Main {
             }
         });
 
+
         int countM3U = 0;
 
         HashSet<String> aliases = new HashSet<String>();
         HashSet<String> missed = new HashSet<String>();
         HashMap<String, Channel> channelsXML = new HashMap<String, Channel>();
 
-        for (String file : filelistM3U) {
-            M3UFile m3u = M3UToolSet.load(file);
-
-            if (debug) {
-                ArrayList<String> sList = new ArrayList<String>();
-                for (M3UItem item : m3u.getItems()) {
-                    sList.add(item.getTvgName() != null ? item.getTvgName().replaceAll("_", " ") : item.getChannelName());
-                }
-                //Collections.sort(sList);
-                System.out.println("channel list of m3u file: " + file);
-                for (String s : sList) {
-                    System.out.println(s);
-                }
-            }
-
+        for (M3UFile m3u : listM3U) {
             M3UHead head = m3u.getHeader();
 
             for (M3UItem item : m3u.getItems()) {
@@ -292,6 +250,67 @@ public class Main {
         if (debug) {
             System.out.println("done.");
         }
+
+    }
+
+    private void parseArgs(String[] args) {
+        ArrayList<String> m3uList = new ArrayList<String>();
+        ArrayList<String> xmlTvList = new ArrayList<String>();
+        if (args != null) {
+            int c = 0;
+            while (c < args.length) {
+                String arg = args[c].toLowerCase();
+                if ("-u".equals(arg)) {
+                    c++;
+                    if (c < args.length) {
+                        m3uList.add(args[c]);
+                    }
+                } else if ("-x".equals(arg)) {
+                    c++;
+                    if (c < args.length) {
+                        xmlTvList.add(args[c]);
+                    }
+                } else if ("-j".equals(arg)) {
+                    c++;
+                    if (c < args.length) {
+                        try {
+                            threads = Integer.parseInt(args[c]);
+                        } catch (NumberFormatException e) {
+                        }
+                    }
+                } else if ("-o".equals(arg)) {
+                    c++;
+                    if (c < args.length) {
+                        out = args[c];
+                    }
+                } else if ("-q".equals(arg)) {
+                    quiet = true;
+                } else if ("-c".equals(arg)) {
+                    channelsOnly = true;
+                } else if ("-d".equals(arg)) {
+                    debug = true;
+                }
+                c++;
+            }
+        }
+        filelistM3U = m3uList.toArray(new String[0]);
+        filelistXmlTv = xmlTvList.toArray(new String[0]);
+    }
+
+
+    static String getConvertedName(String s) {
+        try {
+            return s.toLowerCase().replaceAll("[ _\\-\\(\\)]", "");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return s;
+        }
+    }
+
+    public static void main(String[] args) {
+
+        vXMLTV v = new vXMLTV(args);
+        v.run();
 
     }
 
