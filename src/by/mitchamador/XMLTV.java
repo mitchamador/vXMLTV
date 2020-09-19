@@ -13,11 +13,11 @@ import java.util.zip.GZIPInputStream;
 
 public class XMLTV {
 
-    public String filename;
+    private String filename;
     //@SerializedName("channel")
-    public List<Channel> channels = new ArrayList<Channel>();
+    private List<Channel> channels = new ArrayList<Channel>();
     //@SerializedName("programme")
-    public List<Programme> programmes = new ArrayList<Programme>();
+    private List<Programme> programmes = new ArrayList<Programme>();
 
     public void setChannelsOnly(boolean channelsOnly) {
         this.channelsOnly = channelsOnly;
@@ -25,31 +25,59 @@ public class XMLTV {
 
     private boolean channelsOnly;
 
+    public String getFilename() {
+        return filename;
+    }
+
+    public void setFilename(String filename) {
+        this.filename = filename;
+    }
+
+    public List<Channel> getChannels() {
+        return channels;
+    }
+
+    public List<Programme> getProgrammes() {
+        return programmes;
+    }
+
     public class Programme {
         //@SerializedName("@channel")
-        public String channel;
+        private String channel;
         //@SerializedName("@start")
-        public Date start;
+        private Date start;
         //@SerializedName("@stop")
-        public Date stop;
+        private Date stop;
 
         //@SerializedName("title")
-        public Title title;
+        private Title title;
 
         //@SerializedName("sub-title")
-        public Title subtitle = null;
+        private Title subtitle = null;
 
         //@SerializedName("desc")
-        public Title description = null;
+        private Title description = null;
 
 //  //@SerializedName("previously-shown") 
 //  public PreviousShow previousShow = new PreviousShow(); 
 
         //@SerializedName("episode-num")
-        public EpisodeNumber episodeNumber;
+        private EpisodeNumber episodeNumber;
 
         //@SerializedName("category")
-        public List<Category> categories = new ArrayList<Category>();
+        private List<Category> categories = new ArrayList<Category>();
+
+        public String getChannel() {
+            return channel;
+        }
+
+        public Date getStart() {
+            return start;
+        }
+
+        public Date getStop() {
+            return stop;
+        }
 
         public Programme(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException, java.text.ParseException {
             this.channel = getAttr(start, "channel");
@@ -113,9 +141,9 @@ public class XMLTV {
 
     public class Category {
         //@SerializedName("@lang")
-        public String lang;
+        private String lang;
         //@SerializedName("$")
-        public String name;
+        private String name;
 
         public Category(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
             lang = getAttr(start, "lang");
@@ -151,10 +179,10 @@ public class XMLTV {
 
     public class Title {
         //@SerializedName("@lang")
-        public String lang;
+        private String lang;
 
         //@SerializedName("$")
-        public String title;
+        private String title;
 
         public Title(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
             lang = getAttr(start, "lang");
@@ -195,25 +223,25 @@ public class XMLTV {
         }
 
         //@SerializedName("@start")
-        public String start = null;
+        private String start = null;
     }
 
     public class EpisodeNumber {
         //@SerializedName("@system")
-        public String system;
+        private String system;
 
         //@SerializedName("$")
-        public String value;
+        private String value;
 
     }
 
     public class Channel {
         //@SerializedName("@id")
-        public String id;
+        private String id;
         //@SerializedName("display-name")
-        public List<DisplayName> name = new ArrayList<DisplayName>();
+        private List<DisplayName> name = new ArrayList<DisplayName>();
         //@SerializedName("icon")
-        public Icon icon;
+        private Icon icon;
 
         public Channel(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
             id = getAttr(start, "id");
@@ -240,7 +268,11 @@ public class XMLTV {
             }
         }
 
-        String getName() {
+        public String getId() {
+            return id != null ? id.trim() : "";
+        }
+
+        public String getName() {
             String names = "";
             for (String name : getNameList()) {
                 names += (names.isEmpty() ? "" : ", ") + name;
@@ -248,7 +280,7 @@ public class XMLTV {
             return names;
         }
 
-        String[] getNameList() {
+        public String[] getNameList() {
             String[] names = new String[name.size()];
             for (int i = 0; i < name.size(); i++) {
                 names[i] = name.get(i).name;
@@ -278,10 +310,10 @@ public class XMLTV {
 
     public class DisplayName {
         //@SerializedName("@lang")
-        public String lang;
+        private String lang;
 
         //@SerializedName("$")
-        public String name;
+        private String name;
 
         public DisplayName(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
             lang = getAttr(start, "lang");
@@ -317,13 +349,13 @@ public class XMLTV {
 
     public class Icon {
         //@SerializedName("@src")
-        public String src;
+        private String src;
 
         //@SerializedName("@width")
-        public int width;
+        private int width;
 
         //@SerializedName("@height")
-        public int height;
+        private int height;
 
         public Icon(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
             src = getAttr(start, "src");

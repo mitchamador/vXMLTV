@@ -66,14 +66,14 @@ public class vXMLTV {
                     epg.setChannelsOnly(channelsOnly);
 
                     try {
-                        epg.filename = file;
+                        epg.setFilename(file);
 
                         Long t1 = System.currentTimeMillis();
                         epg.parseStax(file);
                         Long t2 = System.currentTimeMillis();
 
                         if (debug) {
-                            System.out.println(file + " " + (double) (t2 - t1) / (double) 1000 + " sec, total channels: " + epg.channels.size() + ", total programmes: " + epg.programmes.size());
+                            System.out.println(file + " " + (double) (t2 - t1) / (double) 1000 + " sec, total channels: " + epg.getChannels().size() + ", total programmes: " + epg.getProgrammes().size());
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -104,11 +104,11 @@ public class vXMLTV {
             System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000 + "\n");
             for (XMLTV x : list) {
                 ArrayList<String> sList = new ArrayList<String>();
-                for (Channel c : x.channels) {
+                for (Channel c : x.getChannels()) {
                     sList.add(c.getName());
                 }
                 Collections.sort(sList);
-                System.out.println("channel list of file: " + x.filename);
+                System.out.println("channel list of file: " + x.getFilename());
                 for (String s : sList) {
                     System.out.println(s);
                 }
@@ -116,17 +116,17 @@ public class vXMLTV {
         }
 
         for (XMLTV x : list) {
-            epg.channels.addAll(x.channels);
-            epg.programmes.addAll(x.programmes);
+            epg.getChannels().addAll(x.getChannels());
+            epg.getProgrammes().addAll(x.getProgrammes());
             if (!quiet && channelsOnly) {
-                System.out.println("=== " + x.filename);
-                for (Channel ch : x.channels) {
+                System.out.println("=== " + x.getFilename());
+                for (Channel ch : x.getChannels()) {
                     System.out.println(ch.getName());
                 }
             }
         }
 
-        Collections.sort(epg.channels, new Comparator<Channel>() {
+        Collections.sort(epg.getChannels(), new Comparator<Channel>() {
             @Override
             public int compare(Channel o1, Channel o2) {
                 return o1.getName().compareTo(o2.getName());
@@ -151,28 +151,27 @@ public class vXMLTV {
                     nameM3U = item.getChannelName();
                 }
 
-                boolean find = false;
-                for (Channel ch : epg.channels) {
-                    for (String nameXML : ch.getNameList()) {
-                        if (nameXML.equals(nameM3U)) {
-                            find = true;
-                        } else if (getConvertedName(nameXML).equals(getConvertedName(nameM3U))) {
-                            find = true;
-                            if (!aliases.contains(nameM3U + ":" + nameXML)) {
+                Channel matchedChannel = null;
+                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); channelIterator.hasNext() && matchedChannel == null; ) {
+                    Channel ch = channelIterator.next();
+                    if (ch.getId().equals(item.getTvgId())) {
+                        matchedChannel = ch;
+                    } else {
+                        for (String nameXML : ch.getNameList()) {
+                            if (nameXML.equals(nameM3U)) {
+                                matchedChannel = ch;
+                            } else if (getConvertedName(nameXML).equals(getConvertedName(nameM3U))) {
                                 aliases.add(nameM3U + ":" + nameXML);
+                                matchedChannel = ch;
                             }
+                            if (matchedChannel != null) break;
                         }
-                        if (find) {
-                            channelsXML.put(ch.id, ch);
-                            break;
-                        }
-                    }
-                    if (find) {
-                        break;
                     }
                 }
 
-                if (!find) {
+                if (matchedChannel != null) {
+                    channelsXML.put(matchedChannel.getId(), matchedChannel);
+                } else {
                     missed.add(nameM3U);
                 }
 
@@ -231,9 +230,9 @@ public class vXMLTV {
                 }
             }
 */
-            for (Programme p : epg.programmes) {
-                Channel ch = channelsXML.get(p.channel);
-                if (ch != null && p.start != null && p.stop != null) {
+            for (Programme p : epg.getProgrammes()) {
+                Channel ch = channelsXML.get(p.getChannel());
+                if (ch != null && p.getStart() != null && p.getStop() != null) {
                     xml.append(p.toXml(1));
                 }
             }
