@@ -51,6 +51,11 @@ public class M3UItem {
 	 */
 	private String mTvgName;
 
+	/**
+	 * TVG id for XMLTV
+	 */
+	private String mTvgId;
+
 	public void setChannelName(String name) {
 		mChannelName = name;
 	}
@@ -123,6 +128,14 @@ public class M3UItem {
 		return mTvgName;
 	}
 
+	public void setTvgId(String tvgId) {
+		mTvgId = tvgId;
+	}
+
+	public String getTvgId() {
+		return mTvgId;
+	}
+
 	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
@@ -132,6 +145,9 @@ public class M3UItem {
 		}
 		if (mTvgName != null) {
 			sb.append("\nTVG channel Name: " + mTvgName);
+		}
+		if (mTvgId != null) {
+			sb.append("\nTVG channel Id: " + mTvgId);
 		}
 		sb.append("\nDuration: " + mDuration);
 		if (mStreamURL != null) {

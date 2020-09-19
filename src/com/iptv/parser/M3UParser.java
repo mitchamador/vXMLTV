@@ -26,6 +26,7 @@ public class M3UParser {
 	private static final String ATTR_PLUGIN = "plugin";
 	private static final String ATTR_CHANNEL_NAME = "channel_name";
 	private static final String ATTR_TVG_NAME = "tvg-name";
+	private static final String ATTR_TVG_ID = "tvg-id";
 	private static final String ATTR_DURATION = "duration";
 	private static final String ATTR_LOGO = "logo";
 	private static final String ATTR_GROUP_TITLE = "group-title";
@@ -172,6 +173,7 @@ public class M3UParser {
 		item.setDLNAExtras(getAttr(attr, ATTR_DLNA_EXTRAS));
 		item.setPlugin(getAttr(attr, ATTR_PLUGIN));
 		item.setTvgName(getAttr(attr, ATTR_TVG_NAME));
+		item.setTvgId(getAttr(attr, ATTR_TVG_ID));
 		return item;
 	}
 
