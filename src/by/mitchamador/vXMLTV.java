@@ -45,7 +45,7 @@ public class vXMLTV {
             if (debug) {
                 ArrayList<String> sList = new ArrayList<String>();
                 for (M3UItem item : m3u.getItems()) {
-                    sList.add(item.getTvgName() != null ? item.getTvgName().replaceAll("_", " ") : item.getChannelName());
+                    sList.add((item.getTvgName() != null ? (item.getTvgName().replaceAll("_", " ") + " - ") : "") + item.getChannelName());
                 }
                 //Collections.sort(sList);
                 System.out.println("channel list of m3u file: " + file);
@@ -152,19 +152,46 @@ public class vXMLTV {
                 }
 
                 Channel matchedChannel = null;
-                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); channelIterator.hasNext() && matchedChannel == null; ) {
+
+                // match by tvg-id and channel id
+                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
                     Channel ch = channelIterator.next();
-                    if (ch.getId().equals(item.getTvgId())) {
+                    if (ch.getId().equalsIgnoreCase(item.getTvgId())) {
                         matchedChannel = ch;
-                    } else {
-                        for (String nameXML : ch.getNameList()) {
-                            if (nameXML.equals(nameM3U)) {
-                                matchedChannel = ch;
-                            } else if (getConvertedName(nameXML).equals(getConvertedName(nameM3U))) {
+                    }
+                }
+
+                // match by tvg-name and channel id
+                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
+                    Channel ch = channelIterator.next();
+                    if (ch.getId().equalsIgnoreCase(item.getTvgName())) {
+                        matchedChannel = ch;
+                    }
+                }
+
+                // match by m3u name and display-name
+                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
+                    Channel ch = channelIterator.next();
+                    for (String nameXML : ch.getNameList()) {
+                        if (nameXML.equalsIgnoreCase(nameM3U)) {
+                            matchedChannel = ch;
+                            break;
+                        }
+                    }
+                }
+
+                // match by converted m3u name and converted display-name
+                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
+                    Channel ch = channelIterator.next();
+                    for (String nameXML : ch.getNameList()) {
+                        if (getConvertedName(nameXML).equalsIgnoreCase(getConvertedName(nameM3U))) {
+                            if (item.getTvgId() != null && !item.getTvgId().isEmpty()) {
                                 aliases.add(nameM3U + ":" + nameXML);
-                                matchedChannel = ch;
+                            } else {
+                                aliases.add(nameM3U + ":id=\"" + ch.getId() + "\"");
                             }
-                            if (matchedChannel != null) break;
+                            matchedChannel = ch;
+                            break;
                         }
                     }
                 }
@@ -299,7 +326,7 @@ public class vXMLTV {
 
     static String getConvertedName(String s) {
         try {
-            return s.toLowerCase().replaceAll("[ _\\-\\(\\)]", "");
+            return s.toLowerCase().replaceAll("[ _\\-\\(\\)]|[hd]", "");
         } catch (Exception e) {
             e.printStackTrace();
             return s;
