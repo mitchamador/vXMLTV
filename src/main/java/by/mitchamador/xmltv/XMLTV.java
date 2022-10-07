@@ -1,5 +1,8 @@
 package by.mitchamador.xmltv;
 
+import org.w3c.dom.Attr;
+
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -50,25 +53,23 @@ public class XMLTV {
     public static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT_STRING);
 
     public static String getAttr(StartElement start, String attr) {
-        for (Iterator<Attribute> it = start.getAttributes(); it.hasNext(); ) {
-            Attribute a = it.next();
-            if (a.getName().getLocalPart().equals(attr)) {
-                return a.getValue();
+        if (start != null) {
+            Attribute attribute = start.getAttributeByName(new QName(attr));
+            if (attribute != null) {
+                return attribute.getValue();
             }
         }
         return null;
     }
 
     public static int getAttrIntValue(StartElement start, String attr) {
-        for (Iterator<Attribute> it = start.getAttributes(); it.hasNext(); ) {
-            Attribute a = it.next();
-            if (a.getName().getLocalPart().equals(attr)) {
-                try {
-                    return Integer.parseInt(a.getValue());
-                } catch (NumberFormatException e) {
-                    e.printStackTrace();
-                }
+        try {
+            String value = getAttr(start, attr);
+            if (value != null) {
+                return Integer.parseInt(value);
             }
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
         }
         return 0;
     }

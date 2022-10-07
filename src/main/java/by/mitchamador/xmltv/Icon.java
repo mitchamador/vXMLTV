@@ -40,9 +40,6 @@ public class Icon {
         this.height = height;
     }
 
-    public Icon() {
-    }
-
     public Icon(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
         src = XMLTV.getAttr(start, "src");
         width = XMLTV.getAttrIntValue(start, "width");

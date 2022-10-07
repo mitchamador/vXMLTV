@@ -1,7 +1,5 @@
 package by.mitchamador.xmltv;
 
-import org.json.XML;
-
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Characters;
@@ -30,9 +28,6 @@ public class DisplayName {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public DisplayName() {
     }
 
     public DisplayName(XMLEventReader xmlEventReader, StartElement start) throws XMLStreamException {
