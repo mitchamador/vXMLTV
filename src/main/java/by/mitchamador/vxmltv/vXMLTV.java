@@ -4,14 +4,17 @@ import by.mitchamador.xmltv.Channel;
 import by.mitchamador.xmltv.Programme;
 import by.mitchamador.xmltv.XMLTV;
 import com.iptv.parser.M3UFile;
-import com.iptv.parser.M3UHead;
 import com.iptv.parser.M3UItem;
 import com.iptv.parser.M3UToolSet;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -31,199 +34,24 @@ public class vXMLTV {
     }
 
     private void run() {
-        long t1, t2;
+        long start = System.currentTimeMillis();
 
-        t1 = System.currentTimeMillis();
+        List<M3UFile> listM3U = loadM3U();
 
-        XMLTV epg = new XMLTV();
-        epg.setChannelsOnly(channelsOnly);
+        XMLTV epg = loadXmlTv();
 
+        Map<String, Channel> channelsXML = matchChannels(epg, listM3U);
 
-        List<M3UFile> listM3U = new ArrayList<>();
-        for (String file : filelistM3U) {
-            M3UFile m3u = M3UToolSet.load(file);
-            listM3U.add(m3u);
-
-            if (debug) {
-                ArrayList<String> sList = new ArrayList<>();
-                for (M3UItem item : m3u.getItems()) {
-                    sList.add((item.getTvgName() != null ? (item.getTvgName().replaceAll("_", " ") + " - ") : "") + item.getChannelName());
-                }
-                //Collections.sort(sList);
-                System.out.println("channel list of m3u file: " + file);
-                for (String s : sList) {
-                    System.out.println(s);
-                }
-            }
-        }
-
-        ExecutorService pool = Executors.newFixedThreadPool(threads <= 0 ? Runtime.getRuntime().availableProcessors() : threads);
-        ArrayList<Future<XMLTV>> futures = new ArrayList<>();
-
-        for (final String file : filelistXmlTv) {
-            futures.add(pool.submit(() -> {
-                XMLTV epg1 = new XMLTV();
-                epg1.setChannelsOnly(channelsOnly);
-
-                try {
-                    epg1.setFilename(file);
-
-                    Long t11 = System.currentTimeMillis();
-                    epg1.parseStax(file);
-                    Long t21 = System.currentTimeMillis();
-
-                    if (debug) {
-                        System.out.println(file + " " + (double) (t21 - t11) / (double) 1000 + " sec, total channels: " + epg1.getChannels().size() + ", total programmes: " + epg1.getProgrammes().size());
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return epg1;
-            }));
-        }
-        pool.shutdown();
-
-        ArrayList<XMLTV> list = new ArrayList<>();
-
-        for (Future<XMLTV> future : futures) {
-            try {
-                list.add(future.get());
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
-                System.out.println(e.getMessage());
-                System.exit(1);
-                //e.printStackTrace();
-            }
-        }
-
-        t2 = System.currentTimeMillis();
+        createXmlTv(epg, channelsXML);
 
         if (debug) {
-            System.out.println("total time for all files: " + (double) (t2 - t1) / (double) 1000 + "\n");
-            for (XMLTV x : list) {
-                ArrayList<String> sList = new ArrayList<>();
-                for (Channel c : x.getChannels()) {
-                    sList.add(c.getName());
-                }
-                Collections.sort(sList);
-                System.out.println("channel list of file: " + x.getFilename());
-                for (String s : sList) {
-                    System.out.println(s);
-                }
-            }
+            System.out.println("total time: " + (double) (System.currentTimeMillis() - start) / (double) 1000 + "\n");
+            System.out.println("done.");
         }
 
-        for (XMLTV x : list) {
-            epg.getChannels().addAll(x.getChannels());
-            epg.getProgrammes().addAll(x.getProgrammes());
-            if (!quiet && channelsOnly) {
-                System.out.println("=== " + x.getFilename());
-                for (Channel ch : x.getChannels()) {
-                    System.out.println(ch.getName());
-                }
-            }
-        }
+    }
 
-        epg.getChannels().sort(Comparator.comparing(Channel::getName));
-
-
-        int countM3U = 0;
-
-        HashSet<String> aliases = new HashSet<>();
-        HashSet<String> missed = new HashSet<>();
-        HashMap<String, Channel> channelsXML = new HashMap<>();
-
-        for (M3UFile m3u : listM3U) {
-            M3UHead head = m3u.getHeader();
-
-            for (M3UItem item : m3u.getItems()) {
-                String nameM3U;
-                if (item.getTvgName() != null) {
-                    nameM3U = item.getTvgName().replaceAll("_", " ");
-                } else {
-                    nameM3U = item.getChannelName();
-                }
-
-                Channel matchedChannel = null;
-
-                // match by tvg-id and channel id
-                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
-                    Channel ch = channelIterator.next();
-                    if (ch.getId().equalsIgnoreCase(item.getTvgId())) {
-                        matchedChannel = ch;
-                    }
-                }
-
-                // match by tvg-name and channel id
-                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
-                    Channel ch = channelIterator.next();
-                    if (ch.getId().equalsIgnoreCase(item.getTvgName())) {
-                        matchedChannel = ch;
-                    }
-                }
-
-                // match by m3u name and display-name
-                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
-                    Channel ch = channelIterator.next();
-                    for (String nameXML : ch.getNameList()) {
-                        if (nameXML.equalsIgnoreCase(nameM3U)) {
-                            matchedChannel = ch;
-                            break;
-                        }
-                    }
-                }
-
-                // match by converted m3u name and converted display-name
-                for (Iterator<Channel> channelIterator = epg.getChannels().iterator(); matchedChannel == null && channelIterator.hasNext(); ) {
-                    Channel ch = channelIterator.next();
-                    for (String nameXML : ch.getNameList()) {
-                        if (getConvertedName(nameXML).equalsIgnoreCase(getConvertedName(nameM3U))) {
-                            if (item.getTvgId() != null && !item.getTvgId().isEmpty()) {
-                                aliases.add(nameM3U + ":" + nameXML);
-                            } else {
-                                aliases.add(nameM3U + ":id=\"" + ch.getId() + "\"");
-                            }
-                            matchedChannel = ch;
-                            break;
-                        }
-                    }
-                }
-
-                if (matchedChannel != null) {
-                    channelsXML.put(matchedChannel.getId(), matchedChannel);
-                } else {
-                    missed.add(nameM3U);
-                }
-
-                countM3U++;
-            }
-        }
-
-
-        if (!quiet && !aliases.isEmpty()) {
-            System.out.println("=== aliases ===");
-            ArrayList<String> sList = new ArrayList<>(aliases);
-            Collections.sort(sList);
-            for (String s : sList) {
-                System.out.println(s);
-            }
-        }
-
-        if (!quiet && !missed.isEmpty()) {
-            System.out.println("=== missed channels ===");
-            ArrayList<String> sList = new ArrayList<>(missed);
-            Collections.sort(sList);
-            for (String s : sList) {
-                System.out.println(s);
-            }
-        }
-
-        if (!quiet) {
-            System.out.println("total channels: m3u - " + countM3U + ", aliases - " + aliases.size() +
-                    ", missed - " + missed.size() + ", xmltv - " + channelsXML.size());
-        }
-
+    private void createXmlTv(XMLTV epg, Map<String, Channel> channelsXML) {
         if (out != null) {
             StringBuilder xml = new StringBuilder(512 * 1024);
             xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -266,11 +94,194 @@ public class vXMLTV {
                 e.printStackTrace();
             }
         }
+    }
 
-        if (debug) {
-            System.out.println("done.");
+    private Map<String, Channel> matchChannels(XMLTV epg, List<M3UFile> listM3U) {
+
+        Set<String> aliases = new HashSet<>();
+        Set<String> missed = new HashSet<>();
+        Map<String, Channel> channelsXML = new HashMap<>();
+
+        int countM3U = 0;
+
+        for (M3UFile m3u : listM3U) {
+            for (M3UItem item : m3u.getItems()) {
+
+                Channel matchedChannel = matchChannel(item, epg.getChannels(), aliases);
+
+                if (matchedChannel != null) {
+                    channelsXML.put(matchedChannel.getId(), matchedChannel);
+                } else {
+                    missed.add(item.getNameM3U());
+                }
+
+                countM3U++;
+            }
         }
 
+        if (!quiet && !aliases.isEmpty()) {
+            System.out.println("=== aliases ===\n" + getPrintedList("\n", () -> new ArrayList<>(aliases)) + "\n");
+        }
+
+        if (!quiet && !missed.isEmpty()) {
+            System.out.println("=== missed channels ===\n" + getPrintedList("\n", () -> new ArrayList<>(missed)) + "\n");
+        }
+
+        if (!quiet) {
+            System.out.println("total channels: m3u - " + countM3U + ", aliases - " + aliases.size() +
+                    ", missed - " + missed.size() + ", xmltv - " + channelsXML.size() + "\n");
+        }
+
+        return channelsXML;
+    }
+
+    private Channel matchChannel(M3UItem item, List<Channel> channels, Set<String> aliases) {
+
+        String nameM3U = item.getNameM3U();
+
+        // match by tvg-id and channel id
+        for (Channel ch : channels) {
+            if (ch.getId().equalsIgnoreCase(item.getTvgId())) {
+                return ch;
+            }
+        }
+
+        // match by tvg-name and channel id
+        for (Channel ch : channels) {
+            if (ch.getId().equalsIgnoreCase(item.getTvgName())) {
+                return ch;
+            }
+        }
+
+        // match by m3u name and display-name
+        for (Channel ch : channels) {
+            for (String nameXML : ch.getNameList()) {
+                if (nameXML.equalsIgnoreCase(nameM3U)) {
+                    return ch;
+                }
+            }
+        }
+
+        // match by converted m3u name and converted display-name
+        for (Channel ch : channels) {
+            for (String nameXML : ch.getNameList()) {
+                if (getConvertedChannelName(nameXML).equalsIgnoreCase(getConvertedChannelName(nameM3U))) {
+                    if (item.getTvgId() != null && !item.getTvgId().isEmpty()) {
+                        aliases.add(nameM3U + ":" + nameXML);
+                    } else {
+                        aliases.add(nameM3U + ":id=\"" + ch.getId() + "\"");
+                    }
+                    return ch;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private XMLTV loadXmlTv() {
+        XMLTV epg = new XMLTV();
+        epg.setChannelsOnly(channelsOnly);
+
+        ExecutorService pool = Executors.newFixedThreadPool(threads <= 0 ? Runtime.getRuntime().availableProcessors() : threads);
+
+        ExecutorCompletionService<XMLTV> executorCompletionService = new ExecutorCompletionService<>(pool);
+
+        for (final String file : filelistXmlTv) {
+           executorCompletionService.submit(() -> {
+                XMLTV epg1 = new XMLTV();
+                epg1.setChannelsOnly(channelsOnly);
+
+                try {
+                    long _start = System.currentTimeMillis();
+
+                    epg1.setFilename(file);
+                    epg1.parseStax(file);
+
+                    if (debug) {
+                        System.out.println(file + " " + (double) (System.currentTimeMillis() - _start) / (double) 1000 + " sec, total channels: " + epg1.getChannels().size() + ", total programmes: " + epg1.getProgrammes().size() + "\n");
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return epg1;
+            });
+        }
+
+        pool.shutdown();
+
+        ArrayList<XMLTV> list = new ArrayList<>();
+
+        try {
+            Future<XMLTV> f;
+            while ((f = pool.isTerminated() ? executorCompletionService.poll() : executorCompletionService.take()) != null) {
+                try {
+                    XMLTV x = f.get();
+
+                    System.out.println("channel's list from xmltv: " + x.getFilename() + "\n" + getPrintedList(", ", () -> {
+                        ArrayList<String> sList = new ArrayList<>();
+                        for (Channel c : x.getChannels()) {
+                            sList.add(c.getName());
+                        }
+                        Collections.sort(sList);
+                        return sList;
+                    }) + "\n");
+
+                    list.add(x);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (XMLTV x : list) {
+            epg.getChannels().addAll(x.getChannels());
+            epg.getProgrammes().addAll(x.getProgrammes());
+            if (!debug && !quiet && channelsOnly) {
+                System.out.println("=== " + x.getFilename() + "\n" + getPrintedList("\n", () -> {
+                    List<String> sList = new ArrayList<>();
+                    for (Channel ch : x.getChannels()) {
+                        sList.add(ch.getName());
+                    }
+                    return sList;
+                }) + "\n");
+            }
+        }
+
+        epg.getChannels().sort(Comparator.comparing(Channel::getName));
+
+        return epg;
+    }
+
+    private List<M3UFile> loadM3U() {
+        List<M3UFile> listM3U = new ArrayList<>();
+        for (String file : filelistM3U) {
+            M3UFile m3u = M3UToolSet.load(file);
+            listM3U.add(m3u);
+
+            if (debug) {
+                System.out.println("channel's list from m3u: " + file + "\n" + getPrintedList(", ", () -> {
+                    ArrayList<String> sList = new ArrayList<>();
+                    for (M3UItem item : m3u.getItems()) {
+                        sList.add((item.getTvgName() != null ? (item.getTvgName().replaceAll("_", " ") + " - ") : "") + item.getChannelName());
+                    }
+                    //Collections.sort(sList);
+                    return sList;
+                }) + "\n");
+            }
+        }
+        return listM3U;
+    }
+
+    private String getPrintedList(String delimeter, Supplier<List<String>> listSupplier) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : listSupplier.get()) {
+            if (sb.length() != 0) sb.append(delimeter);
+            sb.append(s);
+        }
+        return sb.toString();
     }
 
     private void parseArgs(String[] args) {
@@ -326,7 +337,7 @@ public class vXMLTV {
     }
 
 
-    static String getConvertedName(String s) {
+    private String getConvertedChannelName(String s) {
         try {
             return s.toLowerCase().replaceAll("[ _\\-()]|[hd]", "");
         } catch (Exception e) {
