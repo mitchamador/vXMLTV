@@ -57,19 +57,19 @@ public class M3UHead {
 
 	@Override
 	public String toString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		sb.append("[Head]");
 		if (mName != null) {
-			sb.append("\nName: " + mName);
+			sb.append("\nName: ").append(mName);
 		}
 		if (mType != null) {
-			sb.append("\nType: " + mType);
+			sb.append("\nType: ").append(mType);
 		}
 		if (mDLNAExtras != null) {
-			sb.append("\nDLNA Extras: " + mDLNAExtras);
+			sb.append("\nDLNA Extras: ").append(mDLNAExtras);
 		}
 		if (mPlugin != null) {
-			sb.append("\nPlugin: " + mPlugin);
+			sb.append("\nPlugin: ").append(mPlugin);
 		}
 		return sb.toString();
 	}

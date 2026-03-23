@@ -138,36 +138,45 @@ public class M3UItem {
 
 	@Override
 	public String toString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		sb.append("[Item]");
 		if (mChannelName != null) {
-			sb.append("\nChannel Name: " + mChannelName);
+			sb.append("\nChannel Name: ").append(mChannelName);
 		}
 		if (mTvgName != null) {
-			sb.append("\nTVG channel Name: " + mTvgName);
+			sb.append("\nTVG channel Name: ").append(mTvgName);
 		}
 		if (mTvgId != null) {
-			sb.append("\nTVG channel Id: " + mTvgId);
+			sb.append("\nTVG channel Id: ").append(mTvgId);
 		}
-		sb.append("\nDuration: " + mDuration);
+		sb.append("\nDuration: ").append(mDuration);
 		if (mStreamURL != null) {
-			sb.append("\nStream URL: " + mStreamURL);
+			sb.append("\nStream URL: ").append(mStreamURL);
 		}
 		if (mGroupTitle != null) {
-			sb.append("\nGroup: " + mGroupTitle);
+			sb.append("\nGroup: ").append(mGroupTitle);
 		}
 		if (mLogoURL != null) {
-			sb.append("\nLogo: " + mLogoURL);
+			sb.append("\nLogo: ").append(mLogoURL);
 		}
 		if (mType != null) {
-			sb.append("\nType: " + mType);
+			sb.append("\nType: ").append(mType);
 		}
 		if (mDLNAExtras != null) {
-			sb.append("\nDLNA Extras: " + mDLNAExtras);
+			sb.append("\nDLNA Extras: ").append(mDLNAExtras);
 		}
 		if (mPlugin != null) {
-			sb.append("\nPlugin: " + mPlugin);
+			sb.append("\nPlugin: ").append(mPlugin);
 		}
 		return sb.toString();
+	}
+
+	public String getNameM3U() {
+		if (getTvgName() != null) {
+			return getTvgName().replace("_", " ");
+		} else {
+			return getChannelName();
+		}
+
 	}
 }
